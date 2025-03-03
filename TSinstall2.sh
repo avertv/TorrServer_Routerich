@@ -8,27 +8,6 @@ init_script="/etc/init.d/torrserver"
 
 echo "Проверяем наличие TorrServer..."
 
-# Функция для проверки наличия команды
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Функция для загрузки файла
-download_file() {
-    url="$1"
-    output="$2"
-    if command_exists curl; then
-        echo "Используем curl для загрузки..."
-        curl -L -o "${output}" "${url}" || { echo "Ошибка загрузки с использованием curl"; return 1; }
-    elif command_exists wget; then
-        echo "Используем wget для загрузки..."
-        wget -O "${output}" "${url}" || { echo "Ошибка загрузки с использованием wget"; return 1; }
-    else
-        echo "Не найдены curl или wget. Установите один из них."
-        exit 1
-    fi
-}
-
 # Функция для установки TorrServer
 install_torrserver() {
     # Проверяем, установлен ли TorrServer
@@ -60,29 +39,22 @@ install_torrserver() {
     # Загружаем TorrServer
     url="https://github.com/YouROK/TorrServer/releases/latest/download/TorrServer-linux-${architecture}"
     echo "Загружаем TorrServer для ${architecture}..."
-    download_file "${url}" "${binary}" || exit 1
+    wget -O ${binary} ${url} || { echo "Ошибка загрузки TorrServer"; exit 1; }
     chmod +x ${binary}
 
-    # Проверяем наличие UPX и устанавливаем, если отсутствует
-    if command_exists upx; then
-        echo "UPX уже установлен."
-    else
-        echo "Пытаемся установить UPX..."
-        if opkg update && opkg install upx; then
-            echo "UPX успешно установлен."
-        else
-            echo "Не удалось установить UPX. Продолжаем установку без сжатия."
-        fi
-    fi
-
-    # Сжимаем бинарный файл, если UPX установлен
-    if command_exists upx; then
+    # Пытаемся установить UPX
+    echo "Пытаемся установить UPX..."
+    if opkg update && opkg install upx; then
+        echo "UPX успешно установлен."
+        # Пытаемся сжать бинарный файл с помощью UPX
         echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
         if upx --lzma --best ${binary}; then
             echo "Бинарный файл TorrServer успешно сжат."
         else
             echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
         fi
+    else
+        echo "Не удалось установить UPX. Продолжаем установку без сжатия."
     fi
 
     # Создаем скрипт init.d для управления службой
