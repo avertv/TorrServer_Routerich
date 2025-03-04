@@ -1,5 +1,5 @@
 #!/bin/sh
-# Этот скрипт устанавливает TorrServer на системе OpenWRT.
+# Этот скрипт устанавливает TorrServer на OpenWRT.
 
 # Каталог для TorrServer
 dir="/opt/torrserver"
