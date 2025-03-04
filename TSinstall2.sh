@@ -1,5 +1,5 @@
 #!/bin/sh
-# Этот скрипт устанавливает TorrServer на системе OpenWRT.
+# Этот скрипт устанавливает TorrServer на OpenWRT.
 
 # Каталог для TorrServer
 dir="/opt/torrserver"
@@ -8,12 +8,40 @@ init_script="/etc/init.d/torrserver"
 
 echo "Проверяем наличие TorrServer..."
 
+# Функция для сжатия TorrServer с помощью UPX
+compress_torrserver() {
+    if command -v upx > /dev/null 2>&1; then
+        echo "UPX уже установлен."
+        echo "Пытаемся сжать бинарный файл TorrServer с использованием UPX..."
+        if upx --lzma --best ${binary}; then
+            echo "Бинарный файл TorrServer успешно сжат."
+        else
+            echo "Ошибка сжатия TorrServer. Продолжаем без сжатия."
+        fi
+    else
+        echo "UPX не установлен. Пытаемся установить UPX..."
+        if opkg update && opkg install upx; then
+            echo "UPX успешно установлен."
+            echo "Пытаемся сжать бинарный файл TorrServer с использованием UPX..."
+            if upx --lzma --best ${binary}; then
+                echo "Бинарный файл TorrServer успешно сжат."
+            else
+                echo "Ошибка сжатия TorrServer. Продолжаем без сжатия."
+            fi
+        else
+            echo "Не удалось установить UPX. Продолжаем без сжатия."
+        fi
+    fi
+}
+
 # Функция для установки TorrServer
 install_torrserver() {
     # Проверяем, установлен ли TorrServer
     if [ -f "${binary}" ]; then
         echo "TorrServer уже установлен в ${binary}."
-        echo "Для удаления используйте: $0 --remove"
+        echo "Пытаемся сжать его с помощью UPX..."
+        compress_torrserver
+        echo "Для удаления используйте: $0 -s -- --remove"
         exit 0
     fi
 
@@ -42,31 +70,8 @@ install_torrserver() {
     wget -O ${binary} ${url} || { echo "Ошибка загрузки TorrServer"; exit 1; }
     chmod +x ${binary}
 
-    # Проверяем, установлен ли UPX
-    if command -v upx > /dev/null 2>&1; then
-        echo "UPX уже установлен."
-        # Сжимаем бинарный файл с помощью UPX
-        echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-        if upx --lzma --best ${binary}; then
-            echo "Бинарный файл TorrServer успешно сжат."
-        else
-            echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
-        fi
-    else
-        echo "UPX не установлен. Пытаемся установить UPX..."
-        if opkg update && opkg install upx; then
-            echo "UPX успешно установлен."
-            # Сжимаем бинарный файл с помощью UPX
-            echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-            if upx --lzma --best ${binary}; then
-                echo "Бинарный файл TorrServer успешно сжат."
-            else
-                echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
-            fi
-        else
-            echo "Не удалось установить UPX. Продолжаем установку без сжатия."
-        fi
-    fi
+    # Сжимаем бинарный файл с помощью UPX
+    compress_torrserver
 
     # Создаем скрипт init.d для управления службой
     cat << EOF > ${init_script}
