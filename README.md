@@ -1,8 +1,10 @@
 Скрипт найден в тг канале TorrVPS и немного доработан
 
 
-Неинтерактивная установка с указанием пути:
+* Неинтерактивная установка с указанием пути:
+
 Устанавливает TorrServer в указанный каталог (например, /mnt/sda2/torrserver).
+
 Команда:
 ```bash
 wget -O - https://raw.githubusercontent.com/avertv/TorrServer_Routerich/refs/heads/main/TSinstall.sh | sh -s -- --path /mnt/sda2/torrserver
