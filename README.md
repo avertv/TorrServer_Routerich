@@ -22,7 +22,7 @@ chmod +x TSinstall.sh
 ./TSinstall.sh
 ```
 - [x] __Удаление:__
-- [ ] 
+
 ```bash
 wget -O - https://raw.githubusercontent.com/avertv/TorrServer_Routerich/refs/heads/main/TSinstall.sh | sh -s -- --remove
 ```
