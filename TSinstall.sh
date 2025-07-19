@@ -4,7 +4,7 @@
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
-fallback_path="/opt/torrserver"
+default_path="/opt/torrserver"  # Значение по умолчанию для пути
 
 # Отладочная информация
 echo "DEBUG: Запуск скрипта в интерпретаторе: $SHELL"
@@ -13,13 +13,11 @@ file -bi "$0" 2>/dev/null || echo "DEBUG: Не удалось проверить
 
 # Функция для обработки аргументов командной строки
 parse_args() {
-    path_provided=0
     while [ $# -gt 0 ]; do
         case "$1" in
             --path)
                 shift
                 input_path="$1"
-                path_provided=1
                 ;;
             --auth)
                 shift
@@ -35,11 +33,6 @@ parse_args() {
         esac
         shift
     done
-    # Проверяем, указан ли путь, если не в режиме удаления и не интерактивный терминал
-    if [ -z "$remove_mode" ] && [ $path_provided -eq 0 ] && ! [ -t 0 ]; then
-        echo "Ошибка: Укажите путь с --path (например, --path /mnt/sda2/torrserver) при неинтерактивном запуске."
-        exit 1
-    fi
 }
 
 # Функция для создания файла авторизации
@@ -80,22 +73,22 @@ check_and_create_dirs() {
         torrserver_path="$input_path"
         log_path="${input_path}/torrserver.log"
         echo "DEBUG: Используется путь из аргумента: $torrserver_path"
-    # Проверяем, является ли выполнение интерактивным или режим удаления
+    # Используем значение по умолчанию или интерактивный ввод
     elif [ -z "$remove_mode" ]; then
-        echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($dir):"
+        echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($default_path):"
         read -t 30 input_path
         if [ -z "$input_path" ]; then
-            torrserver_path="$dir"
-            log_path="/tmp/log/torrserver/torrserver.log"
+            torrserver_path="$default_path"
+            log_path="${default_path}/torrserver.log"
             echo "DEBUG: Используется стандартный путь: $torrserver_path"
         else
             torrserver_path="$input_path"
             log_path="${input_path}/torrserver.log"
         fi
     else
-        echo "DEBUG: Неинтерактивный режим. Используется запасной путь: $fallback_path"
-        torrserver_path="$fallback_path"
-        log_path="${fallback_path}/torrserver.log"
+        echo "DEBUG: Неинтерактивный режим. Используется запасной путь: $default_path"
+        torrserver_path="$default_path"
+        log_path="${default_path}/torrserver.log"
     fi
 
     # Проверяем наличие каталога
@@ -114,9 +107,9 @@ check_and_create_dirs() {
                 mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
                 echo "DEBUG: Каталог $torrserver_path успешно создан."
             else
-                echo "Каталог не создан. Используется стандартный путь: $dir"
-                torrserver_path="$dir"
-                log_path="/tmp/log/torrserver/torrserver.log"
+                echo "Каталог не создан. Используется стандартный путь: $default_path"
+                torrserver_path="$default_path"
+                log_path="${default_path}/torrserver.log"
             fi
         fi
     fi
