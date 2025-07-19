@@ -172,12 +172,7 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command /opt/torrserver/torrserver \
-        -d /opt/torrserver \
-        -p 8090 \
-        --path $torrserver_path \
-        --logpath $log_path \
-        $httpauth
+    procd_set_param command /opt/torrserver/torrserver -d /opt/torrserver -p 8090 --path $torrserver_path --logpath $log_path $httpauth
     procd_set_param respawn
     procd_set_param respawn_threshold 3600 5 5  # Перезапуск до 5 раз в час
     procd_set_param respawn_timeout 5          # Таймаут 5 сек
