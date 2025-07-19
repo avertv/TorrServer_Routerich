@@ -1,11 +1,15 @@
-#!/bin/sh
 # Этот скрипт устанавливает TorrServer на OpenWRT.
 
 # Каталог для TorrServer
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
-fallback_path="/mnt/sda2/torrserver"
+fallback_path="/opt/torrserver"
+
+# Отладочная информация
+echo "DEBUG: Запуск скрипта в интерпретаторе: $SHELL"
+echo "DEBUG: Проверка кодировки..."
+file -bi "$0" 2>/dev/null || echo "DEBUG: Не удалось проверить кодировку"
 
 # Функция для обработки аргументов командной строки
 parse_args() {
@@ -28,21 +32,21 @@ parse_args() {
 create_auth_file() {
     auth_file="${torrserver_path}/accs.db"
     echo "Введите логин для TorrServer:"
-    read -r username
+    read username
     if [ -z "$username" ]; then
         echo "Логин не введен. Авторизация не будет настроена."
         return 1
     fi
     echo "Введите пароль для TorrServer:"
-    read -r password
+    read password
     if [ -z "$password" ]; then
         echo "Пароль не введен. Авторизация не будет настроена."
         return 1
     fi
-    # Создаем файл авторизации в формате JSON
-    printf "{\"${username}\":\"${password}\"}" > "${auth_file}" || { echo "Ошибка создания файла авторизации ${auth_file}"; exit 1; }
-    chmod 600 "${auth_file}"
-    echo "Файл авторизации ${auth_file} успешно создан."
+    # Создаем файл авторизации в формате JSON, используя echo для ash-совместимости
+    echo "{\"$username\":\"$password\"}" > "$auth_file" || { echo "Ошибка создания файла авторизации $auth_file"; exit 1; }
+    chmod 600 "$auth_file"
+    echo "Файл авторизации $auth_file успешно создан."
     return 0
 }
 
@@ -52,43 +56,43 @@ check_and_create_dirs() {
     if [ -n "$input_path" ]; then
         torrserver_path="$input_path"
         log_path="${input_path}/torrserver.log"
-        echo "Используется путь из аргумента: ${torrserver_path}"
+        echo "Используется путь из аргумента: $torrserver_path"
     # Проверяем, является ли выполнение интерактивным
     elif tty >/dev/null 2>&1 && [ -t 0 ]; then
-        echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути (${dir}):"
-        read -r input_path
+        echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($dir):"
+        read input_path
         if [ -z "$input_path" ]; then
-            torrserver_path="${dir}"
+            torrserver_path="$dir"
             log_path="/tmp/log/torrserver/torrserver.log"
-            echo "Используется стандартный путь: ${torrserver_path}"
+            echo "Используется стандартный путь: $torrserver_path"
         else
-            torrserver_path="${input_path}"
+            torrserver_path="$input_path"
             log_path="${input_path}/torrserver.log"
         fi
     else
-        echo "Неинтерактивный режим. Используется запасной путь: ${fallback_path}"
-        torrserver_path="${fallback_path}"
+        echo "Неинтерактивный режим. Используется запасной путь: $fallback_path"
+        torrserver_path="$fallback_path"
         log_path="${fallback_path}/torrserver.log"
     fi
 
     # Проверяем наличие каталога
-    if [ -d "${torrserver_path}" ]; then
-        echo "Каталог ${torrserver_path} уже существует."
+    if [ -d "$torrserver_path" ]; then
+        echo "Каталог $torrserver_path уже существует."
     else
-        echo "Каталог ${torrserver_path} не существует."
+        echo "Каталог $torrserver_path не существует."
         # В неинтерактивном режиме или при использовании --path автоматически создаем каталог
         if [ -n "$input_path" ] || ! tty >/dev/null 2>&1 || [ ! -t 0 ]; then
-            mkdir -p "${torrserver_path}" || { echo "Ошибка создания каталога ${torrserver_path}"; exit 1; }
-            echo "Каталог ${torrserver_path} автоматически создан."
+            mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
+            echo "Каталог $torrserver_path автоматически создан."
         else
-            echo "Хотите создать каталог ${torrserver_path}? (y/n)"
-            read -r response
+            echo "Хотите создать каталог $torrserver_path? (y/n)"
+            read response
             if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
-                mkdir -p "${torrserver_path}" || { echo "Ошибка создания каталога ${torrserver_path}"; exit 1; }
-                echo "Каталог ${torrserver_path} успешно создан."
+                mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
+                echo "Каталог $torrserver_path успешно создан."
             else
-                echo "Каталог не создан. Используется стандартный путь: ${dir}"
-                torrserver_path="${dir}"
+                echo "Каталог не создан. Используется стандартный путь: $dir"
+                torrserver_path="$dir"
                 log_path="/tmp/log/torrserver/torrserver.log"
             fi
         fi
@@ -98,14 +102,14 @@ check_and_create_dirs() {
 # Функция для установки TorrServer
 install_torrserver() {
     # Проверяем, установлен ли TorrServer
-    if [ -f "${binary}" ]; then
-        echo "TorrServer уже установлен в ${binary}."
+    if [ -f "$binary" ]; then
+        echo "TorrServer уже установлен в $binary."
         echo "Для удаления используйте: $0 -s -- --remove"
         exit 0
     fi
 
     # Создаем каталог для TorrServer
-    mkdir -p ${dir}
+    mkdir -p "$dir"
 
     # Определяем архитектуру системы
     echo "Проверяем архитектуру..."
@@ -124,17 +128,17 @@ install_torrserver() {
     esac
 
     # Загружаем TorrServer
-    url="https://github.com/YouROK/TorrServer/releases/latest/download/TorrServer-linux-${architecture}"
-    echo "Загружаем TorrServer для ${architecture}..."
-    wget -O ${binary} ${url} || { echo "Ошибка загрузки TorrServer"; exit 1; }
-    chmod +x ${binary}
+    url="https://github.com/YouROK/TorrServer/releases/latest/download/TorrServer-linux-$architecture"
+    echo "Загружаем TorrServer для $architecture..."
+    wget -O "$binary" "$url" || { echo "Ошибка загрузки TorrServer"; exit 1; }
+    chmod +x "$binary"
 
     # Проверяем, установлен ли UPX
-    if command -v upx > /dev/null 2>&1; then
+    if command -v upx >/dev/null 2>&1; then
         echo "UPX уже установлен."
         # Сжимаем бинарный файл с помощью UPX
         echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-        if upx --lzma ${binary}; then
+        if upx --lzma "$binary"; then
             echo "Бинарный файл TorrServer успешно сжат."
         else
             echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
@@ -145,7 +149,7 @@ install_torrserver() {
             echo "UPX успешно установлен."
             # Сжимаем бинарный файл с помощью UPX
             echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-            if upx --lzma ${binary}; then
+            if upx --lzma "$binary"; then
                 echo "Бинарный файл TorrServer успешно сжат."
             else
                 echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
@@ -162,7 +166,7 @@ install_torrserver() {
     httpauth=""
     if tty >/dev/null 2>&1 && [ -t 0 ]; then
         echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
-        read -r auth_response
+        read auth_response
         if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
             if create_auth_file; then
                 httpauth="--httpauth"
@@ -171,8 +175,8 @@ install_torrserver() {
     fi
 
     # Создаем скрипт init.d для управления службой
-    cat << EOF > ${init_script}
-#!/bin/sh /etc/rc.common
+    cat << EOF > "$init_script"
+#!/bin/sh
 # Скрипт запуска Torrent сервера
 
 START=95
@@ -181,12 +185,12 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command ${binary} \
-        -d ${dir} \
+    procd_set_param command $binary \
+        -d $dir \
         -p 8090 \
-        --path ${torrserver_path} \
-        --logpath ${log_path} \
-        ${httpauth}
+        --path $torrserver_path \
+        --logpath $log_path \
+        $httpauth
     procd_set_param respawn
     procd_set_param respawn_threshold 3600 5 5  # Перезапуск до 5 раз в час
     procd_set_param respawn_timeout 5          # Таймаут 5 сек
@@ -195,9 +199,9 @@ start_service() {
 EOF
 
     # Делаем скрипт init.d исполняемым и запускаем службу
-    chmod +x ${init_script}
-    ${init_script} enable
-    ${init_script} start
+    chmod +x "$init_script"
+    "$init_script" enable
+    "$init_script" start
 
     echo "TorrServer успешно установлен и запущен."
 }
@@ -205,35 +209,35 @@ EOF
 # Функция для удаления TorrServer
 remove_torrserver() {
     # Останавливаем службу, если она запущена
-    if [ -f "${init_script}" ]; then
-        ${init_script} stop
-        ${init_script} disable
+    if [ -f "$init_script" ]; then
+        "$init_script" stop
+        "$init_script" disable
     fi
 
     # Удаляем файлы TorrServer
-    if [ -f "${binary}" ]; then
-        rm -f ${binary}
-        echo "Удален бинарный файл TorrServer: ${binary}"
+    if [ -f "$binary" ]; then
+        rm -f "$binary"
+        echo "Удален бинарный файл TorrServer: $binary"
     fi
 
-    if [ -d "${dir}" ]; then
-        rm -rf ${dir}
-        echo "Удален каталог TorrServer: ${dir}"
+    if [ -d "$dir" ]; then
+        rm -rf "$dir"
+        echo "Удален каталог TorrServer: $dir"
     fi
 
-    if [ -f "${init_script}" ]; then
-        rm -f ${init_script}
-        echo "Удален init.d скрипт: ${init_script}"
+    if [ -f "$init_script" ]; then
+        rm -f "$init_script"
+        echo "Удален init.d скрипт: $init_script"
     fi
 
     # Удаляем каталог torrserver и файл авторизации, если они существуют
-    if [ -n "${torrserver_path}" ] && [ -d "${torrserver_path}" ] && [ "${torrserver_path}" != "${dir}" ]; then
-        if [ -f "${torrserver_path}/accs.db" ]; then
-            rm -f "${torrserver_path}/accs.db"
-            echo "Удален файл авторизации: ${torrserver_path}/accs.db"
+    if [ -n "$torrserver_path" ] && [ -d "$torrserver_path" ] && [ "$torrserver_path" != "$dir" ]; then
+        if [ -f "$torrserver_path/accs.db" ]; then
+            rm -f "$torrserver_path/accs.db"
+            echo "Удален файл авторизации: $torrserver_path/accs.db"
         fi
-        rm -rf "${torrserver_path}"
-        echo "Удален каталог TorrServer: ${torrserver_path}"
+        rm -rf "$torrserver_path"
+        echo "Удален каталог TorrServer: $torrserver_path"
     fi
 
     echo "TorrServer успешно удален."
