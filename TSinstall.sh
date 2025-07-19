@@ -136,31 +136,18 @@ install_torrserver() {
     chmod +x "$binary"
     echo "DEBUG: Бинарный файл $binary загружен и сделан исполняемым."
 
-    # Проверяем, установлен ли UPX
-    if command -v upx >/dev/null 2>&1; then
-        echo "UPX уже установлен."
-        # Сжимаем бинарный файл с помощью UPX
-        echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-        if upx --lzma "$binary"; then
-            echo "DEBUG: Бинарный файл TorrServer успешно сжат."
-        else
-            echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
-        fi
-    else
-        echo "UPX не установлен. Пытаемся установить UPX..."
-        if opkg update && opkg install upx; then
-            echo "UPX успешно установлен."
-            # Сжимаем бинарный файл с помощью UPX
-            echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-            if upx --lzma "$binary"; then
-                echo "DEBUG: Бинарный файл TorrServer успешно сжат."
-            else
-                echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
-            fi
-        else
-            echo "Не удалось установить UPX. Продолжаем установку без сжатия."
-        fi
-    fi
+    # Отключаем сжатие UPX для теста (временная мера)
+    # if command -v upx >/dev/null 2>&1; then
+    #     echo "UPX уже установлен."
+    #     echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
+    #     if upx --lzma "$binary"; then
+    #         echo "DEBUG: Бинарный файл TorrServer успешно сжат."
+    #     else
+    #         echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
+    #     fi
+    # else
+    #     echo "UPX не установлен. Продолжаем установку без сжатия."
+    # fi
 
     # Проверяем и создаем директории
     check_and_create_dirs
@@ -208,7 +195,7 @@ EOF
     echo "DEBUG: Установлены права на $init_script."
     "$init_script" enable || { echo "Ошибка активации службы $init_script"; exit 1; }
     echo "DEBUG: Служба $init_script активирована."
-    "$init_script" start || { echo "Ошибка запуска службы $init_script"; exit 1; }
+    "$init_script" start || { echo "Ошибка запуска службы $init_script. Проверяю логи..."; logread | grep torrserver >> /tmp/torrserver_start.log; exit 1; }
     echo "DEBUG: Служба $init_script запущена."
 
     echo "TorrServer успешно установлен и запущен."
