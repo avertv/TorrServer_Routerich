@@ -6,11 +6,6 @@ binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
 default_path="/opt/torrserver"  # Значение по умолчанию для пути
 
-# Отладочная информация
-echo "DEBUG: Запуск скрипта в интерпретаторе: $SHELL"
-echo "DEBUG: Проверка кодировки..."
-file -bi "$0" 2>/dev/null || echo "DEBUG: Не удалось проверить кодировку"
-
 # Функция для обработки аргументов командной строки
 parse_args() {
     while [ $# -gt 0 ]; do
@@ -62,7 +57,7 @@ create_auth_file() {
     # Создаем файл авторизации в формате JSON
     echo "{\"$username\":\"$password\"}" > "$auth_file" || { echo "Ошибка создания файла авторизации $auth_file"; exit 1; }
     chmod 600 "$auth_file"
-    echo "DEBUG: Файл авторизации $auth_file успешно создан."
+    echo "Файл авторизации $auth_file успешно создан."
     return 0
 }
 
@@ -72,7 +67,7 @@ check_and_create_dirs() {
     if [ -n "$input_path" ]; then
         torrserver_path="$input_path"
         log_path="${input_path}/torrserver.log"
-        echo "DEBUG: Используется путь из аргумента: $torrserver_path"
+        echo "Используется путь из аргумента: $torrserver_path"
     # Используем значение по умолчанию или интерактивный ввод
     elif [ -z "$remove_mode" ]; then
         echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($default_path):"
@@ -80,32 +75,32 @@ check_and_create_dirs() {
         if [ -z "$input_path" ]; then
             torrserver_path="$default_path"
             log_path="${default_path}/torrserver.log"
-            echo "DEBUG: Используется стандартный путь: $torrserver_path"
+            echo "Используется стандартный путь: $torrserver_path"
         else
             torrserver_path="$input_path"
             log_path="${input_path}/torrserver.log"
         fi
     else
-        echo "DEBUG: Неинтерактивный режим. Используется запасной путь: $default_path"
+        echo "Автоматический режим. Используется запасной путь: $default_path"
         torrserver_path="$default_path"
         log_path="${default_path}/torrserver.log"
     fi
 
     # Проверяем наличие каталога
     if [ -d "$torrserver_path" ]; then
-        echo "DEBUG: Каталог $torrserver_path уже существует."
+        echo "Каталог $torrserver_path уже существует."
     else
-        echo "DEBUG: Каталог $torrserver_path не существует."
+        echo "Каталог $torrserver_path не существует."
         # В неинтерактивном режиме или при использовании --path автоматически создаем каталог
         if [ -n "$input_path" ] || [ -n "$remove_mode" ]; then
             mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
-            echo "DEBUG: Каталог $torrserver_path автоматически создан."
+            echo "Каталог $torrserver_path автоматически создан."
         else
             echo "Хотите создать каталог $torrserver_path? (y/n)"
             read -t 30 response
             if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
                 mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
-                echo "DEBUG: Каталог $torrserver_path успешно создан."
+                echo "Каталог $torrserver_path успешно создан."
             else
                 echo "Каталог не создан. Используется стандартный путь: $default_path"
                 torrserver_path="$default_path"
@@ -126,7 +121,7 @@ install_torrserver() {
 
     # Создаем каталог для TorrServer
     mkdir -p "$dir" || { echo "Ошибка создания каталога $dir"; exit 1; }
-    echo "DEBUG: Каталог $dir создан."
+    echo "Каталог $dir создан."
 
     # Определяем архитектуру системы
     echo "Проверяем архитектуру..."
@@ -143,7 +138,7 @@ install_torrserver() {
         mipsel) architecture="mipsle" ;;
         *) echo "Архитектура не поддерживается"; exit 1 ;;
     esac
-    echo "DEBUG: Определена архитектура: $architecture"
+    echo "Определена архитектура: $architecture"
 
     # Загружаем TorrServer
     url="https://github.com/YouROK/TorrServer/releases/latest/download/TorrServer-linux-$architecture"
@@ -153,13 +148,13 @@ install_torrserver() {
     echo "DEBUG: Бинарный файл $binary загружен и сделан исполняемым."
 
     # Проверка работоспособности бинарника
-    echo "DEBUG: Проверка бинарника..."
+    echo "Проверка бинарника..."
     if ! /opt/torrserver/torrserver --version > /dev/null 2>&1; then
         echo "Ошибка: Бинарник /opt/torrserver/torrserver не работает. Удаляю и завершаю."
         rm -f "$binary"
         exit 1
     fi
-    echo "DEBUG: Бинарник работает корректно."
+    echo "Бинарник работает корректно."
 
     # Проверяем и создаем директории
     check_and_create_dirs
@@ -183,7 +178,7 @@ install_torrserver() {
     fi
 
     # Создаем скрипт init.d для управления службой
-    echo "DEBUG: Создание скрипта $init_script..."
+    echo "Создание скрипта $init_script..."
     cat << EOF > "$init_script"
 #!/bin/sh /etc/rc.common
 # Скрипт запуска Torrent сервера
@@ -210,11 +205,11 @@ EOF
 
     # Делаем скрипт init.d исполняемым и запускаем службу
     chmod +x "$init_script" || { echo "Ошибка установки прав на $init_script"; exit 1; }
-    echo "DEBUG: Установлены права на $init_script."
+    echo "Установлены права на $init_script."
     "$init_script" enable || { echo "Ошибка активации службы $init_script"; exit 1; }
-    echo "DEBUG: Служба $init_script активирована."
+    echo "Служба $init_script активирована."
     "$init_script" start || { echo "Ошибка запуска службы $init_script. Проверяю логи..."; logread | grep -i "torr\|procd" >> /tmp/torrserver_start.log; cat /tmp/torrserver_start.log; exit 1; }
-    echo "DEBUG: Служба $init_script запущена."
+    echo "Служба $init_script запущена."
 
     echo "TorrServer успешно установлен и запущен."
 }
