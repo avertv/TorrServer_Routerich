@@ -5,8 +5,33 @@
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
+default_torrserver_path="/mnt/sda2/torrserver"
+default_log_path="/mnt/sda2/torrserver/torrserver.log"
 
 echo "Проверяем наличие TorrServer..."
+
+# Функция для проверки и создания директорий
+check_and_create_dirs() {
+    torrserver_path="${default_torrserver_path}"
+    log_path="${default_log_path}"
+
+    # Проверяем наличие каталога /mnt/sda2/torrserver
+    if [ -d "${torrserver_path}" ]; then
+        echo "Каталог ${torrserver_path} уже существует."
+    else
+        echo "Каталог ${torrserver_path} не существует."
+        echo "Хотите создать каталог ${torrserver_path}? (y/n)"
+        read -r response
+        if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
+            mkdir -p "${torrserver_path}" || { echo "Ошибка создания каталога ${torrserver_path}"; exit 1; }
+            echo "Каталог ${torrserver_path} успешно создан."
+        else
+            echo "Каталог не создан. Используется стандартный путь: ${dir}"
+            torrserver_path="${dir}"
+            log_path="/tmp/log/torrserver/torrserver.log"
+        fi
+    fi
+}
 
 # Функция для установки TorrServer
 install_torrserver() {
@@ -47,7 +72,7 @@ install_torrserver() {
         echo "UPX уже установлен."
         # Сжимаем бинарный файл с помощью UPX
         echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-        if upx --lzma --best ${binary}; then
+        if upx --lzma ${binary}; then
             echo "Бинарный файл TorrServer успешно сжат."
         else
             echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
@@ -58,7 +83,7 @@ install_torrserver() {
             echo "UPX успешно установлен."
             # Сжимаем бинарный файл с помощью UPX
             echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-            if upx --lzma --best ${binary}; then
+            if upx --lzma ${binary}; then
                 echo "Бинарный файл TorrServer успешно сжат."
             else
                 echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
@@ -67,6 +92,9 @@ install_torrserver() {
             echo "Не удалось установить UPX. Продолжаем установку без сжатия."
         fi
     fi
+
+    # Проверяем и создаем директории
+    check_and_create_dirs
 
     # Создаем скрипт init.d для управления службой
     cat << EOF > ${init_script}
@@ -79,11 +107,11 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command /opt/torrserver/torrserver \
-        -d /opt/torrserver \
+    procd_set_param command ${binary} \
+        -d ${dir} \
         -p 8090 \
-        --path /mnt/sda2/torrserver \
-        --logpath /mnt/sda2/torrserver.log \
+        --path ${torrserver_path} \
+        --logpath ${log_path} \
         --httpauth
     procd_set_param respawn
     procd_set_param respawn_threshold 3600 5 5  # Перезапуск до 5 раз в час
@@ -122,6 +150,12 @@ remove_torrserver() {
     if [ -f "${init_script}" ]; then
         rm -f ${init_script}
         echo "Удален init.d скрипт: ${init_script}"
+    fi
+
+    # Удаляем каталог torrserver, если он существует
+    if [ -d "${default_torrserver_path}" ]; then
+        rm -rf "${default_torrserver_path}"
+        echo "Удален каталог TorrServer: ${default_torrserver_path}"
     fi
 
     echo "TorrServer успешно удален."
