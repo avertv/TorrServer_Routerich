@@ -1,3 +1,4 @@
+```bash
 #!/bin/sh
 # Этот скрипт устанавливает TorrServer на OpenWRT.
 
@@ -24,7 +25,27 @@ parse_args() {
     done
 }
 
-echo "Проверяем наличие TorrServer..."
+# Функция для создания файла авторизации
+create_auth_file() {
+    auth_file="${torrserver_path}/accs.db"
+    echo "Введите логин для TorrServer:"
+    read -r username
+    if [ -z "$username" ]; then
+        echo "Логин не введен. Авторизация не будет настроена."
+        return 1
+    fi
+    echo "Введите пароль для TorrServer:"
+    read -r password
+    if [ -z "$password" ]; then
+        echo "Пароль не введен. Авторизация не будет настроена."
+        return 1
+    fi
+    # Создаем файл авторизации в формате JSON
+    printf "{\"${username}\":\"${password}\"}" > "${auth_file}" || { echo "Ошибка создания файла авторизации ${auth_file}"; exit 1; }
+    chmod 600 "${auth_file}"
+    echo "Файл авторизации ${auth_file} успешно создан."
+    return 0
+}
 
 # Функция для проверки и создания директорий
 check_and_create_dirs() {
@@ -117,7 +138,7 @@ install_torrserver() {
         if upx --lzma ${binary}; then
             echo "Бинарный файл TorrServer успешно сжат."
         else
- catégories: [ "Ошибка сжатия TorrServer. Продолжаем установку без сжатия." ]
+            echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
         fi
     else
         echo "UPX не установлен. Пытаемся установить UPX..."
@@ -138,6 +159,18 @@ install_torrserver() {
     # Проверяем и создаем директории
     check_and_create_dirs
 
+    # Проверяем интерактивность для настройки авторизации
+    httpauth=""
+    if tty >/dev/null 2>&1 && [ -t 0 ]; then
+        echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
+        read -r auth_response
+        if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
+            if create_auth_file; then
+                httpauth="--httpauth"
+            fi
+        fi
+    fi
+
     # Создаем скрипт init.d для управления службой
     cat << EOF > ${init_script}
 #!/bin/sh /etc/rc.common
@@ -154,7 +187,7 @@ start_service() {
         -p 8090 \
         --path ${torrserver_path} \
         --logpath ${log_path} \
-        --httpauth
+        ${httpauth}
     procd_set_param respawn
     procd_set_param respawn_threshold 3600 5 5  # Перезапуск до 5 раз в час
     procd_set_param respawn_timeout 5          # Таймаут 5 сек
@@ -194,8 +227,12 @@ remove_torrserver() {
         echo "Удален init.d скрипт: ${init_script}"
     fi
 
-    # Удаляем каталог torrserver, если он существует
+    # Удаляем каталог torrserver и файл авторизации, если они существуют
     if [ -n "${torrserver_path}" ] && [ -d "${torrserver_path}" ] && [ "${torrserver_path}" != "${dir}" ]; then
+        if [ -f "${torrserver_path}/accs.db" ]; then
+            rm -f "${torrserver_path}/accs.db"
+            echo "Удален файл авторизации: ${torrserver_path}/accs.db"
+        fi
         rm -rf "${torrserver_path}"
         echo "Удален каталог TorrServer: ${torrserver_path}"
     fi
@@ -213,3 +250,4 @@ case "$1" in
         install_torrserver
         ;;
 esac
+```
