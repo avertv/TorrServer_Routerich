@@ -5,17 +5,24 @@
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
-default_torrserver_path="/mnt/sda2/torrserver"
-default_log_path="/mnt/sda2/torrserver/torrserver.log"
 
 echo "Проверяем наличие TorrServer..."
 
 # Функция для проверки и создания директорий
 check_and_create_dirs() {
-    torrserver_path="${default_torrserver_path}"
-    log_path="${default_log_path}"
+    # Запрашиваем путь для TorrServer
+    echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути (${dir}):"
+    read -r input_path
+    if [ -z "$input_path" ]; then
+        torrserver_path="${dir}"
+        log_path="/tmp/log/torrserver/torrserver.log"
+        echo "Используется стандартный путь: ${torrserver_path}"
+    else
+        torrserver_path="${input_path}"
+        log_path="${input_path}/torrserver.log"
+    fi
 
-    # Проверяем наличие каталога /mnt/sda2/torrserver
+    # Проверяем наличие каталога
     if [ -d "${torrserver_path}" ]; then
         echo "Каталог ${torrserver_path} уже существует."
     else
@@ -153,9 +160,9 @@ remove_torrserver() {
     fi
 
     # Удаляем каталог torrserver, если он существует
-    if [ -d "${default_torrserver_path}" ]; then
-        rm -rf "${default_torrserver_path}"
-        echo "Удален каталог TorrServer: ${default_torrserver_path}"
+    if [ -n "${torrserver_path}" ] && [ -d "${torrserver_path}" ] && [ "${torrserver_path}" != "${dir}" ]; then
+        rm -rf "${torrserver_path}"
+        echo "Удален каталог TorrServer: ${torrserver_path}"
     fi
 
     echo "TorrServer успешно удален."
