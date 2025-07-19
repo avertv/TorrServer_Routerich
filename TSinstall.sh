@@ -1,4 +1,3 @@
-```bash
 #!/bin/sh
 # Этот скрипт устанавливает TorrServer на OpenWRT.
 
@@ -250,4 +249,3 @@ case "$1" in
         install_torrserver
         ;;
 esac
-```
