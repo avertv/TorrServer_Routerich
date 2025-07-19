@@ -19,6 +19,10 @@ parse_args() {
                 shift
                 input_path="$1"
                 ;;
+            --auth)
+                shift
+                auth_credentials="$1"
+                ;;
             --remove|-r)
                 remove_mode=1
                 ;;
@@ -34,19 +38,28 @@ parse_args() {
 # Функция для создания файла авторизации
 create_auth_file() {
     auth_file="${torrserver_path}/accs.db"
-    echo "Введите логин для TorrServer:"
-    read username
-    if [ -z "$username" ]; then
-        echo "Логин не введен. Авторизация не будет настроена."
-        return 1
+    if [ -n "$auth_credentials" ]; then
+        username=$(echo "$auth_credentials" | cut -d':' -f1)
+        password=$(echo "$auth_credentials" | cut -d':' -f2)
+        if [ -z "$username" ] || [ -z "$password" ]; then
+            echo "Ошибка: Укажите логин и пароль в формате username:password с --auth."
+            return 1
+        fi
+    else
+        echo "Введите логин для TorrServer:"
+        read username
+        if [ -z "$username" ]; then
+            echo "Логин не введен. Авторизация не будет настроена."
+            return 1
+        fi
+        echo "Введите пароль для TorrServer:"
+        read password
+        if [ -z "$password" ]; then
+            echo "Пароль не введен. Авторизация не будет настроена."
+            return 1
+        fi
     fi
-    echo "Введите пароль для TorrServer:"
-    read password
-    if [ -z "$password" ]; then
-        echo "Пароль не введен. Авторизация не будет настроена."
-        return 1
-    fi
-    # Создаем файл авторизации в формате JSON, используя echo для ash-совместимости
+    # Создаем файл авторизации в формате JSON
     echo "{\"$username\":\"$password\"}" > "$auth_file" || { echo "Ошибка создания файла авторизации $auth_file"; exit 1; }
     chmod 600 "$auth_file"
     echo "DEBUG: Файл авторизации $auth_file успешно создан."
@@ -60,7 +73,7 @@ check_and_create_dirs() {
         torrserver_path="$input_path"
         log_path="${input_path}/torrserver.log"
         echo "DEBUG: Используется путь из аргумента: $torrserver_path"
-    # Проверяем, является ли выполнение интерактивным
+    # Проверяем, является ли выполнение интерактивным или режим удаления
     elif [ -z "$remove_mode" ]; then
         echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($dir):"
         read input_path
@@ -151,14 +164,20 @@ install_torrserver() {
     # Проверяем и создаем директории
     check_and_create_dirs
 
-    # Запрос авторизации (всегда, если не в режиме удаления)
+    # Настройка авторизации
     httpauth=""
     if [ -z "$remove_mode" ]; then
-        echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
-        read auth_response
-        if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
+        if [ -n "$auth_credentials" ]; then
             if create_auth_file; then
                 httpauth="--httpauth"
+            fi
+        else
+            echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
+            read auth_response
+            if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
+                if create_auth_file; then
+                    httpauth="--httpauth"
+                fi
             fi
         fi
     fi
