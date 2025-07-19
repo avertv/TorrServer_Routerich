@@ -19,6 +19,9 @@ parse_args() {
                 shift
                 input_path="$1"
                 ;;
+            --remove|-r)
+                remove_mode=1
+                ;;
             *)
                 echo "Неизвестный аргумент: $1"
                 exit 1
@@ -58,7 +61,7 @@ check_and_create_dirs() {
         log_path="${input_path}/torrserver.log"
         echo "DEBUG: Используется путь из аргумента: $torrserver_path"
     # Проверяем, является ли выполнение интерактивным
-    elif tty >/dev/null 2>&1 && [ -t 0 ]; then
+    elif [ -z "$remove_mode" ]; then
         echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($dir):"
         read input_path
         if [ -z "$input_path" ]; then
@@ -81,7 +84,7 @@ check_and_create_dirs() {
     else
         echo "DEBUG: Каталог $torrserver_path не существует."
         # В неинтерактивном режиме или при использовании --path автоматически создаем каталог
-        if [ -n "$input_path" ] || ! tty >/dev/null 2>&1 || [ ! -t 0 ]; then
+        if [ -n "$input_path" ] || [ -n "$remove_mode" ]; then
             mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
             echo "DEBUG: Каталог $torrserver_path автоматически создан."
         else
@@ -104,7 +107,7 @@ install_torrserver() {
     # Проверяем, установлен ли TorrServer
     if [ -f "$binary" ]; then
         echo "TorrServer уже установлен в $binary."
-        echo "Для удаления используйте: $0 -s -- --remove"
+        echo "Для удаления используйте: $0 --remove"
         exit 0
     fi
 
@@ -148,9 +151,9 @@ install_torrserver() {
     # Проверяем и создаем директории
     check_and_create_dirs
 
-    # Проверяем интерактивность для настройки авторизации
+    # Запрос авторизации (всегда, если не в режиме удаления)
     httpauth=""
-    if tty >/dev/null 2>&1 && [ -t 0 ]; then
+    if [ -z "$remove_mode" ]; then
         echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
         read auth_response
         if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
@@ -235,12 +238,9 @@ remove_torrserver() {
 }
 
 # Основная логика скрипта
-case "$1" in
-    --remove|-r)
-        remove_torrserver
-        ;;
-    *)
-        parse_args "$@"
-        install_torrserver
-        ;;
-esac
+parse_args "$@"
+if [ -n "$remove_mode" ]; then
+    remove_torrserver
+else
+    install_torrserver
+fi
