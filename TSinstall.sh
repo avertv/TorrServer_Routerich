@@ -145,7 +145,7 @@ install_torrserver() {
     echo "Загружаем TorrServer для $architecture..."
     wget -O "$binary" "$url" || { echo "Ошибка загрузки TorrServer"; exit 1; }
     chmod +x "$binary"
-    echo "DEBUG: Бинарный файл $binary загружен и сделан исполняемым."
+    echo "Бинарный файл $binary загружен и сделан исполняемым."
 
     # Проверка работоспособности бинарника
     echo "Проверка бинарника..."
@@ -197,7 +197,7 @@ start_service() {
 }
 EOF
     if [ $? -eq 0 ]; then
-        echo "DEBUG: Скрипт $init_script успешно создан."
+        echo "Скрипт $init_script успешно создан."
     else
         echo "Ошибка создания скрипта $init_script"
         exit 1
