@@ -13,11 +13,13 @@ file -bi "$0" 2>/dev/null || echo "DEBUG: Не удалось проверить
 
 # Функция для обработки аргументов командной строки
 parse_args() {
+    path_provided=0
     while [ $# -gt 0 ]; do
         case "$1" in
             --path)
                 shift
                 input_path="$1"
+                path_provided=1
                 ;;
             --auth)
                 shift
@@ -33,6 +35,11 @@ parse_args() {
         esac
         shift
     done
+    # Проверяем, указан ли путь, если не в режиме удаления и не интерактивный терминал
+    if [ -z "$remove_mode" ] && [ $path_provided -eq 0 ] && ! [ -t 0 ]; then
+        echo "Ошибка: Укажите путь с --path (например, --path /mnt/sda2/torrserver) при неинтерактивном запуске."
+        exit 1
+    fi
 }
 
 # Функция для создания файла авторизации
@@ -47,13 +54,13 @@ create_auth_file() {
         fi
     else
         echo "Введите логин для TorrServer:"
-        read username
+        read -t 30 username
         if [ -z "$username" ]; then
             echo "Логин не введен. Авторизация не будет настроена."
             return 1
         fi
         echo "Введите пароль для TorrServer:"
-        read password
+        read -t 30 password
         if [ -z "$password" ]; then
             echo "Пароль не введен. Авторизация не будет настроена."
             return 1
@@ -76,7 +83,7 @@ check_and_create_dirs() {
     # Проверяем, является ли выполнение интерактивным или режим удаления
     elif [ -z "$remove_mode" ]; then
         echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути ($dir):"
-        read input_path
+        read -t 30 input_path
         if [ -z "$input_path" ]; then
             torrserver_path="$dir"
             log_path="/tmp/log/torrserver/torrserver.log"
@@ -102,7 +109,7 @@ check_and_create_dirs() {
             echo "DEBUG: Каталог $torrserver_path автоматически создан."
         else
             echo "Хотите создать каталог $torrserver_path? (y/n)"
-            read response
+            read -t 30 response
             if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
                 mkdir -p "$torrserver_path" || { echo "Ошибка создания каталога $torrserver_path"; exit 1; }
                 echo "DEBUG: Каталог $torrserver_path успешно создан."
@@ -173,7 +180,7 @@ install_torrserver() {
             fi
         else
             echo "Настроить HTTP-авторизацию для TorrServer? (y/n)"
-            read auth_response
+            read -t 30 auth_response
             if [ "$auth_response" = "y" ] || [ "$auth_response" = "Y" ]; then
                 if create_auth_file; then
                     httpauth="--httpauth"
