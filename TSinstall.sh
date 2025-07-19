@@ -136,18 +136,14 @@ install_torrserver() {
     chmod +x "$binary"
     echo "DEBUG: Бинарный файл $binary загружен и сделан исполняемым."
 
-    # Отключаем сжатие UPX для теста (временная мера)
-    # if command -v upx >/dev/null 2>&1; then
-    #     echo "UPX уже установлен."
-    #     echo "Сжимаем бинарный файл TorrServer с использованием UPX..."
-    #     if upx --lzma "$binary"; then
-    #         echo "DEBUG: Бинарный файл TorrServer успешно сжат."
-    #     else
-    #         echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
-    #     fi
-    # else
-    #     echo "UPX не установлен. Продолжаем установку без сжатия."
-    # fi
+    # Проверка работоспособности бинарника
+    echo "DEBUG: Проверка бинарника..."
+    if ! /opt/torrserver/torrserver --version > /dev/null 2>&1; then
+        echo "Ошибка: Бинарник /opt/torrserver/torrserver не работает. Удаляю и завершаю."
+        rm -f "$binary"
+        exit 1
+    fi
+    echo "DEBUG: Бинарник работает корректно."
 
     # Проверяем и создаем директории
     check_and_create_dirs
@@ -167,7 +163,7 @@ install_torrserver() {
     # Создаем скрипт init.d для управления службой
     echo "DEBUG: Создание скрипта $init_script..."
     cat << EOF > "$init_script"
-#!/bin/sh
+#!/bin/sh /etc/rc.common
 # Скрипт запуска Torrent сервера
 
 START=95
@@ -176,7 +172,12 @@ USE_PROCD=1
 
 start_service() {
     procd_open_instance
-    procd_set_param command $binary -d $dir -p 8090 --path $torrserver_path --logpath $log_path $httpauth
+    procd_set_param command /opt/torrserver/torrserver \
+        -d /opt/torrserver \
+        -p 8090 \
+        --path $torrserver_path \
+        --logpath $log_path \
+        $httpauth
     procd_set_param respawn
     procd_set_param respawn_threshold 3600 5 5  # Перезапуск до 5 раз в час
     procd_set_param respawn_timeout 5          # Таймаут 5 сек
@@ -195,7 +196,7 @@ EOF
     echo "DEBUG: Установлены права на $init_script."
     "$init_script" enable || { echo "Ошибка активации службы $init_script"; exit 1; }
     echo "DEBUG: Служба $init_script активирована."
-    "$init_script" start || { echo "Ошибка запуска службы $init_script. Проверяю логи..."; logread | grep torrserver >> /tmp/torrserver_start.log; exit 1; }
+    "$init_script" start || { echo "Ошибка запуска службы $init_script. Проверяю логи..."; logread | grep -i "torr\|procd" >> /tmp/torrserver_start.log; cat /tmp/torrserver_start.log; exit 1; }
     echo "DEBUG: Служба $init_script запущена."
 
     echo "TorrServer успешно установлен и запущен."
