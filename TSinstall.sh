@@ -5,21 +5,50 @@
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
 init_script="/etc/init.d/torrserver"
+fallback_path="/mnt/sda2/torrserver"
+
+# Функция для обработки аргументов командной строки
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --path)
+                shift
+                input_path="$1"
+                ;;
+            *)
+                echo "Неизвестный аргумент: $1"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+}
 
 echo "Проверяем наличие TorrServer..."
 
 # Функция для проверки и создания директорий
 check_and_create_dirs() {
-    # Запрашиваем путь для TorrServer
-    echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути (${dir}):"
-    read -r input_path
-    if [ -z "$input_path" ]; then
-        torrserver_path="${dir}"
-        log_path="/tmp/log/torrserver/torrserver.log"
-        echo "Используется стандартный путь: ${torrserver_path}"
-    else
-        torrserver_path="${input_path}"
+    # Проверяем, был ли указан путь через аргумент --path
+    if [ -n "$input_path" ]; then
+        torrserver_path="$input_path"
         log_path="${input_path}/torrserver.log"
+        echo "Используется путь из аргумента: ${torrserver_path}"
+    # Проверяем, является ли выполнение интерактивным
+    elif tty >/dev/null 2>&1 && [ -t 0 ]; then
+        echo "Введите путь для каталога TorrServer (например, /mnt/sda2/torrserver) или нажмите Enter для использования стандартного пути (${dir}):"
+        read -r input_path
+        if [ -z "$input_path" ]; then
+            torrserver_path="${dir}"
+            log_path="/tmp/log/torrserver/torrserver.log"
+            echo "Используется стандартный путь: ${torrserver_path}"
+        else
+            torrserver_path="${input_path}"
+            log_path="${input_path}/torrserver.log"
+        fi
+    else
+        echo "Неинтерактивный режим. Используется запасной путь: ${fallback_path}"
+        torrserver_path="${fallback_path}"
+        log_path="${fallback_path}/torrserver.log"
     fi
 
     # Проверяем наличие каталога
@@ -27,15 +56,21 @@ check_and_create_dirs() {
         echo "Каталог ${torrserver_path} уже существует."
     else
         echo "Каталог ${torrserver_path} не существует."
-        echo "Хотите создать каталог ${torrserver_path}? (y/n)"
-        read -r response
-        if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
+        # В неинтерактивном режиме или при использовании --path автоматически создаем каталог
+        if [ -n "$input_path" ] || ! tty >/dev/null 2>&1 || [ ! -t 0 ]; then
             mkdir -p "${torrserver_path}" || { echo "Ошибка создания каталога ${torrserver_path}"; exit 1; }
-            echo "Каталог ${torrserver_path} успешно создан."
+            echo "Каталог ${torrserver_path} автоматически создан."
         else
-            echo "Каталог не создан. Используется стандартный путь: ${dir}"
-            torrserver_path="${dir}"
-            log_path="/tmp/log/torrserver/torrserver.log"
+            echo "Хотите создать каталог ${torrserver_path}? (y/n)"
+            read -r response
+            if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
+                mkdir -p "${torrserver_path}" || { echo "Ошибка создания каталога ${torrserver_path}"; exit 1; }
+                echo "Каталог ${torrserver_path} успешно создан."
+            else
+                echo "Каталог не создан. Используется стандартный путь: ${dir}"
+                torrserver_path="${dir}"
+                log_path="/tmp/log/torrserver/torrserver.log"
+            fi
         fi
     fi
 }
@@ -82,7 +117,7 @@ install_torrserver() {
         if upx --lzma ${binary}; then
             echo "Бинарный файл TorrServer успешно сжат."
         else
-            echo "Ошибка сжатия TorrServer. Продолжаем установку без сжатия."
+ catégories: [ "Ошибка сжатия TorrServer. Продолжаем установку без сжатия." ]
         fi
     else
         echo "UPX не установлен. Пытаемся установить UPX..."
@@ -174,6 +209,7 @@ case "$1" in
         remove_torrserver
         ;;
     *)
+        parse_args "$@"
         install_torrserver
         ;;
 esac
