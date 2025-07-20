@@ -164,7 +164,7 @@ install_torrserver() {
 
     # Загружаем и устанавливаем UPX
     # Получаем последнюю версию UPX
-    upx_version=$(wget -q -O - https://github.com/upx/upx/releases/latest | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
+    upx_version=$(wget -q -O - https://github.com/upx/upx/releases/latest | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
     if [ -z "$upx_version" ]; then
         echo "Не удалось определить последнюю версию UPX, сжатие пропущено."
         upx_failed=1
