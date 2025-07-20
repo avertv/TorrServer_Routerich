@@ -27,3 +27,6 @@ chmod +x TSinstall.sh
 wget -O - https://raw.githubusercontent.com/avertv/TorrServer_Routerich/refs/heads/main/TSinstall.sh | sh -s -- --remove
 rm -rf /opt/torrserver /mnt/sda2/torrserver
 ```
+-----------------------------------------------------------------------------------------------------------------------------   
+- [x] __P.S. Версия `TSinstall2.sh` сжатие бинарника `TorrServer` при помощи `UPX` __
+
