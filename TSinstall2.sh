@@ -163,7 +163,7 @@ install_torrserver() {
     echo "DEBUG: Бинарник работает корректно."
 
     # Загружаем и устанавливаем UPX
-    # Получаем последнюю версию UPX
+    # Получаем последнюю версию UPX, убирая префикс 'v' и беря только числовую часть
     upx_version=$(wget -q -O - https://github.com/upx/upx/releases/latest | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
     if [ -z "$upx_version" ]; then
         echo "Не удалось определить последнюю версию UPX, сжатие пропущено."
