@@ -1,5 +1,3 @@
-# Этот скрипт устанавливает TorrServer на OpenWRT.
-
 # Каталог для TorrServer
 dir="/opt/torrserver"
 binary="${dir}/torrserver"
