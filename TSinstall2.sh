@@ -173,13 +173,25 @@ install_torrserver() {
         echo "Загружаем UPX версии $upx_version для $architecture..."
         wget -O "${dir}/upx.tar.xz" "$upx_url" || { echo "Ошибка загрузки UPX, сжатие пропущено."; upx_failed=1; }
         if [ -z "$upx_failed" ]; then
-            tar -xJf "${dir}/upx.tar.xz" -C "$dir" --strip-components=1 --wildcards "*/upx" || { echo "Ошибка распаковки UPX, сжатие пропущено."; rm -f "${dir}/upx.tar.xz"; upx_failed=1; }
-            if [ -z "$upx_failed" ]; then
-                chmod +x "$upx_binary"
-                rm -f "${dir}/upx.tar.xz"
-                echo "DEBUG: UPX успешно установлен в $upx_binary."
-
-                # Сжатие бинарника с помощью UPX
+            # Проверяем поддержку xz, если нет - скачиваем бинарник напрямую
+            if ! tar --help 2>&1 | grep -q xz; then
+                echo "BusyBox tar не поддерживает xz, пытаемся загрузить бинарник UPX напрямую..."
+                upx_direct_url="https://github.com/upx/upx/releases/download/${upx_version}/upx-${upx_version#v}-${architecture}_linux"
+                wget -O "$upx_binary" "$upx_direct_url" || { echo "Ошибка загрузки бинарника UPX, сжатие пропущено."; upx_failed=1; }
+                if [ -z "$upx_failed" ]; then
+                    chmod +x "$upx_binary"
+                    echo "DEBUG: Бинарник UPX успешно загружен в $upx_binary."
+                fi
+            else
+                tar -xvf "${dir}/upx.tar.xz" -C "$dir" --strip-components=1 --wildcards "*/upx" || { echo "Ошибка распаковки UPX, сжатие пропущено."; rm -f "${dir}/upx.tar.xz"; upx_failed=1; }
+                if [ -z "$upx_failed" ]; then
+                    chmod +x "$upx_binary"
+                    rm -f "${dir}/upx.tar.xz"
+                    echo "DEBUG: UPX успешно установлен в $upx_binary."
+                fi
+            fi
+            # Сжатие бинарника с помощью UPX, если доступен
+            if [ -x "$upx_binary" ]; then
                 echo "DEBUG: Сжатие бинарника с помощью UPX..."
                 "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
                 if [ $? -eq 0 ]; then
