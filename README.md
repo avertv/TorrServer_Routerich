@@ -4,7 +4,7 @@
 
 Опция `--path` позволяет переопределить путь ( например, `/mnt/sda2/torrserver` ).  
 Опция `--auth` добавить авторизацию (например, `--auth admin:passw0rd` ).  
-Опция `--path` и `--auth` добавить авторизацию и путь (например, `--path /opt/torrserver --auth admin:password` ).  
+Опция `--path` и `--auth` добавить авторизацию и путь (например, `--path /opt/torrserver --auth "admin:password"` ).  
 Опция `--remove` удаление TorrServer.  
 - [x] __Автоматическая установка с указанием пути:__
       
