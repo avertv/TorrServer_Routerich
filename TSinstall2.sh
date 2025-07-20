@@ -172,7 +172,7 @@ install_torrserver() {
 
         # Сжатие бинарника с помощью UPX
         echo "DEBUG: Сжатие бинарника с помощью UPX..."
-        "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
+        "$upx_binary" --lzma "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
         if [ $? -eq 0 ]; then
             echo "DEBUG: Бинарник успешно сжат с помощью UPX."
         fi
