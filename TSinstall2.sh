@@ -133,15 +133,15 @@ install_torrserver() {
     echo "Проверяем архитектуру..."
     architecture=""
     case $(uname -m) in
-        x86_64) architecture="x86_64" ;;
-        i*86) architecture="i386" ;;
-        armv7*) architecture="arm" ;;
-        armv5*) architecture="arm" ;;
-        aarch64) architecture="aarch64" ;;
+        x86_64) architecture="amd64" ;;
+        i*86) architecture="386" ;;
+        armv7*) architecture="arm7" ;;
+        armv5*) architecture="arm5" ;;
+        aarch64) architecture="arm64" ;;  # Исправлено на arm64
         mips) architecture="mips" ;;
         mips64) architecture="mips64" ;;
-        mips64el) architecture="mips64el" ;;
-        mipsel) architecture="mipsel" ;;
+        mips64el) architecture="mips64le" ;;
+        mipsel) architecture="mipsle" ;;
         *) echo "Архитектура не поддерживается"; exit 1 ;;
     esac
     echo "DEBUG: Определена архитектура: $architecture"
@@ -165,17 +165,21 @@ install_torrserver() {
     # Загружаем и устанавливаем UPX
     upx_url="https://github.com/upx/upx/releases/latest/download/upx-${architecture}_linux.tar.xz"
     echo "Загружаем UPX для $architecture..."
-    wget -O "${dir}/upx.tar.xz" "$upx_url" || { echo "Ошибка загрузки UPX"; exit 1; }
-    tar -xJf "${dir}/upx.tar.xz" -C "$dir" --strip-components=1 --wildcards "*/upx" || { echo "Ошибка распаковки UPX"; rm -f "${dir}/upx.tar.xz"; exit 1; }
-    chmod +x "$upx_binary"
-    rm -f "${dir}/upx.tar.xz"
-    echo "DEBUG: UPX успешно установлен в $upx_binary."
+    wget -O "${dir}/upx.tar.xz" "$upx_url" || { echo "Ошибка загрузки UPX, сжатие пропущено."; upx_failed=1; }
+    if [ -z "$upx_failed" ]; then
+        tar -xJf "${dir}/upx.tar.xz" -C "$dir" --strip-components=1 --wildcards "*/upx" || { echo "Ошибка распаковки UPX, сжатие пропущено."; rm -f "${dir}/upx.tar.xz"; upx_failed=1; }
+        if [ -z "$upx_failed" ]; then
+            chmod +x "$upx_binary"
+            rm -f "${dir}/upx.tar.xz"
+            echo "DEBUG: UPX успешно установлен в $upx_binary."
 
-    # Сжатие бинарника с помощью UPX
-    echo "DEBUG: Сжатие бинарника с помощью UPX..."
-    "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
-    if [ $? -eq 0 ]; then
-        echo "DEBUG: Бинарник успешно сжат с помощью UPX."
+            # Сжатие бинарника с помощью UPX
+            echo "DEBUG: Сжатие бинарника с помощью UPX..."
+            "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
+            if [ $? -eq 0 ]; then
+                echo "DEBUG: Бинарник успешно сжат с помощью UPX."
+            fi
+        fi
     fi
 
     # Проверяем и создаем директории
