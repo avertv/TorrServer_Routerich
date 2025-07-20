@@ -25,4 +25,5 @@ chmod +x TSinstall.sh
 
 ```bash
 wget -O - https://raw.githubusercontent.com/avertv/TorrServer_Routerich/refs/heads/main/TSinstall.sh | sh -s -- --remove
+rm -rf /opt/torrserver /mnt/sda2/torrserver
 ```
