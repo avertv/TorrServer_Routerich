@@ -232,6 +232,8 @@ EOF
     echo "DEBUG: Служба $init_script активирована."
     "$init_script" start || { echo "Ошибка запуска службы $init_script. Проверяю логи..."; logread | grep -i "torr\|procd" >> /tmp/torrserver_start.log; cat /tmp/torrserver_start.log; exit 1; }
     echo "DEBUG: Служба $init_script запущена."
+    "$init_script" restart || { echo "Ошибка перезапуска службы $init_script. Проверяю логи..."; logread | grep -i "torr\|procd" >> /tmp/torrserver_start.log; cat /tmp/torrserver_start.log; exit 1; }
+    echo "DEBUG: Служба $init_script перезапущена."
 
     echo "TorrServer успешно установлен и запущен."
 }
