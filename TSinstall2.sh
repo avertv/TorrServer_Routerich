@@ -163,41 +163,18 @@ install_torrserver() {
     echo "DEBUG: Бинарник работает корректно."
 
     # Загружаем и устанавливаем UPX
-    # Получаем последнюю версию UPX с префиксом 'v'
-    upx_version=$(wget -q -O - https://github.com/upx/upx/releases/latest | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
-    if [ -z "$upx_version" ]; then
-        echo "Не удалось определить последнюю версию UPX, сжатие пропущено."
-        upx_failed=1
-    else
-        upx_url="https://github.com/upx/upx/releases/download/${upx_version}/upx-${upx_version#v}-${architecture}_linux.tar.xz"
-        echo "Загружаем UPX версии $upx_version для $architecture..."
-        wget -O "${dir}/upx.tar.xz" "$upx_url" || { echo "Ошибка загрузки UPX, сжатие пропущено."; upx_failed=1; }
-        if [ -z "$upx_failed" ]; then
-            # Проверяем поддержку xz, если нет - скачиваем бинарник напрямую
-            if ! tar --help 2>&1 | grep -q xz; then
-                echo "BusyBox tar не поддерживает xz, пытаемся загрузить бинарник UPX напрямую..."
-                upx_direct_url="https://github.com/upx/upx/releases/download/${upx_version}/upx-${upx_version#v}-${architecture}_linux"
-                wget -O "$upx_binary" "$upx_direct_url" || { echo "Ошибка загрузки бинарника UPX, сжатие пропущено."; upx_failed=1; }
-                if [ -z "$upx_failed" ]; then
-                    chmod +x "$upx_binary"
-                    echo "DEBUG: Бинарник UPX успешно загружен в $upx_binary."
-                fi
-            else
-                tar -xvf "${dir}/upx.tar.xz" -C "$dir" --strip-components=1 --wildcards "*/upx" || { echo "Ошибка распаковки UPX, сжатие пропущено."; rm -f "${dir}/upx.tar.xz"; upx_failed=1; }
-                if [ -z "$upx_failed" ]; then
-                    chmod +x "$upx_binary"
-                    rm -f "${dir}/upx.tar.xz"
-                    echo "DEBUG: UPX успешно установлен в $upx_binary."
-                fi
-            fi
-            # Сжатие бинарника с помощью UPX, если доступен
-            if [ -x "$upx_binary" ]; then
-                echo "DEBUG: Сжатие бинарника с помощью UPX..."
-                "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
-                if [ $? -eq 0 ]; then
-                    echo "DEBUG: Бинарник успешно сжат с помощью UPX."
-                fi
-            fi
+    upx_url="https://github.com/avertv/TorrServer_Routerich/raw/refs/heads/main/upx"
+    echo "Загружаем UPX из вашего репозитория..."
+    wget -O "$upx_binary" "$upx_url" || { echo "Ошибка загрузки UPX, сжатие пропущено."; upx_failed=1; }
+    if [ -z "$upx_failed" ]; then
+        chmod +x "$upx_binary"
+        echo "DEBUG: UPX успешно установлен в $upx_binary."
+
+        # Сжатие бинарника с помощью UPX
+        echo "DEBUG: Сжатие бинарника с помощью UPX..."
+        "$upx_binary" --best "$binary" || echo "DEBUG: Ошибка сжатия UPX, продолжаю без сжатия."
+        if [ $? -eq 0 ]; then
+            echo "DEBUG: Бинарник успешно сжат с помощью UPX."
         fi
     fi
 
