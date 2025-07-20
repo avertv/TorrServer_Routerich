@@ -55,8 +55,10 @@ create_auth_file() {
             return 1
         fi
     fi
+    # Экранируем специальные символы в пароле для корректного JSON
+    escaped_password=$(printf '%q' "$password")
     # Создаем файл авторизации в формате JSON
-    echo "{\"$username\":\"$password\"}" > "$auth_file" || { echo "Ошибка создания файла авторизации $auth_file"; exit 1; }
+    echo "{\"$username\":\"$escaped_password\"}" > "$auth_file" || { echo "Ошибка создания файла авторизации $auth_file"; exit 1; }
     chmod 600 "$auth_file"
     echo "Файл авторизации $auth_file успешно создан с содержимым: $(cat $auth_file)"
     return 0
